@@ -50,12 +50,38 @@ router.post('/', async (req, res, next) => {
 
 
 router.patch('/:id', async (req, res, next) => {
-    const {id} = req.params;
-    const {amt} = req.body;
+    try{
+        const {id} = req.params;
+        const {amt, paid} = req.body;
+        let paidDate = null;
 
-    const result = await db.query(`UPDATE invoices SET amt=$1 WHERE id=$2 RETURNING *`, [amt, id]);
-    return res.json({invoice: result.rows[0]})
+        // logic to check if payment was made or not
+        const paymentStatus = await db.query(`SELECT paid, paid_date FROM invoices WHERE id=$1`, [id]);
 
+        if(paymentStatus.rows.length === 0){
+            throw new ExpressError(`Cannot find find invoice number ${id}`, 404)
+        }
+
+        const currPaidDate = paymentStatus.rows[0].paid_date; // paid_date will be null if it has not been paid
+
+        // logic to handle paid_date if payment was made or not made
+        if(!currPaidDate && paid){
+            paidDate = new Date()
+        } else if(!paid){
+            paidDate = null
+        } else {
+            paidDate = currPaidDate
+        }
+        console.log(paymentStatus)
+
+    
+        const result = await db.query(`UPDATE invoices SET amt=$1, paid=$2, paid_date=$3 WHERE id=$4 RETURNING amt, paid, paid_date,  id`, [amt, paid, paidDate, id]);
+       
+        return res.json({invoice: result.rows[0]})    
+    } catch(e){
+        return next(e)
+    }
+    
 })
 
 

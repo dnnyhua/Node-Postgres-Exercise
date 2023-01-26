@@ -1,7 +1,8 @@
 const express = require('express');
 const router = express.Router();
-const db = require("../db")
-const ExpressError = require("../expressError")
+const db = require("../db");
+const ExpressError = require("../expressError");
+const slugify = require("slugify");
 
 
 router.get('/', async (req,res, next) => {
@@ -14,6 +15,7 @@ router.get('/', async (req,res, next) => {
     }
     
 })
+
 
 
 router.get('/:code', async (req, res, next) => {
@@ -43,8 +45,10 @@ router.get('/:code', async (req, res, next) => {
 // should return obj of new company added: {company: {code, name, description}}
 router.post('/', async function (req, res, next) {
     try{
+        let {name, description} = req.body
+        let code = slugify(name, {lower:true})
         const results = await db.query(
-            'INSERT INTO companies (code, name, description) VALUES ($1, $2, $3) RETURNING code, name, description', [req.body.code, req.body.name, req.body.description])
+            'INSERT INTO companies (code, name, description) VALUES ($1, $2, $3) RETURNING code, name, description', [code, name, description])
         console.log(results)
         return res.json({company: results.rows[0]})
     } catch(e) {
